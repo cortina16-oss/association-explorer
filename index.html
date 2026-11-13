@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Association explorer: correlation and regression</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9EEF1; --panel:#F8FAFB; --ink:#16222E; --muted:#56687A; --rule:#D3DCE3;
+  --point:#2E6A8E; --fit:#8A2F5B; --err:#C2601A; --band:rgba(138,47,91,.10); --meanline:#8C9BA8; --accent:#2E6A8E; --grid:#E1E7EC;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11181E; --panel:#19232B; --ink:#E2E9EE; --muted:#93A4B2; --rule:#2B3843;
+    --point:#6DB0D4; --fit:#E27DAB; --err:#F0A060; --band:rgba(226,125,171,.14); --meanline:#5E6E7B; --accent:#6DB0D4; --grid:#222E37;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11181E; --panel:#19232B; --ink:#E2E9EE; --muted:#93A4B2; --rule:#2B3843;
+  --point:#6DB0D4; --fit:#E27DAB; --err:#F0A060; --band:rgba(226,125,171,.14); --meanline:#5E6E7B; --accent:#6DB0D4; --grid:#222E37;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 48px}
+header{margin-bottom:22px;max-width:70ch}
+h1{font-family:"Newsreader",Georgia,"Times New Roman",serif;font-weight:600;
+  font-size:clamp(1.7rem,3.2vw,2.4rem);line-height:1.1;margin:0 0 8px;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted)}
+h2{font-family:"Newsreader",Georgia,serif;font-weight:600;font-size:1.2rem;margin:0 0 12px}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px}
+aside.panel{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+@media (max-width:860px){aside.panel{position:static}}
+.group{padding:12px 0;border-top:1px solid var(--rule)}
+.group:first-of-type{border-top:0;padding-top:0}
+.group h3{font-size:.95rem;font-weight:600;margin:0 0 8px}
+.ctl{margin:8px 0 12px}
+.ctl label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.88rem;color:var(--muted);margin-bottom:4px}
+.ctl input[type=number]{width:78px;font:inherit;font-size:.88rem;color:var(--ink);background:var(--bg);
+  border:1px solid var(--rule);border-radius:6px;padding:3px 6px;text-align:right}
+.txt{width:100%;font:inherit;font-size:.9rem;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:5px 8px}
+input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.seg button{font:inherit;font-size:.9rem;padding:7px 8px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel);font-weight:600}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-size:.9rem;padding:7px 12px;border-radius:8px;border:1px solid var(--rule);
+  background:var(--bg);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:.88rem;color:var(--muted);margin-top:10px}
+.check input{margin-top:3px;accent-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.plots{display:grid;grid-template-columns:minmax(0,760px);gap:20px}
+.plot h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.plot h2 small{font-family:"Public Sans",system-ui,sans-serif;font-weight:500;font-size:.85rem;color:var(--muted)}
+.eq{font-size:.95rem;margin:8px 0 0;color:var(--ink)}
+.eq i{font-family:"Newsreader",Georgia,serif;font-size:1.08em}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--muted);font-size:12px}
+.btn[aria-pressed="true"]{background:var(--accent);color:var(--panel);border-color:var(--accent);font-weight:600}
+.see-btn{margin-top:12px}
+.see{margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+.see[hidden]{display:none}
+.see h3{font-size:1rem;margin:0 0 6px}
+.see ol{margin:8px 0 0;padding-left:1.3em}
+.see li{margin:0 0 10px}
+.see .math{font-family:"Newsreader",Georgia,serif;font-size:1.08em}
+.see table{margin-top:6px;font-size:.85rem}
+.sw.err{border-top:2px solid var(--err)}
+.bandsw{width:18px;height:10px;background:var(--band);border-top:1px dashed var(--fit);border-bottom:1px dashed var(--fit)}
+.legend .see-only[hidden]{display:none}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:18px;height:0;border-top:2.5px solid var(--fit)}
+.sw.mean{border-top:1.5px dashed var(--meanline)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--point);opacity:.7}
+.results{margin-top:20px}
+.tables{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:1060px){.tables{grid-template-columns:1fr}}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+caption{text-align:left;font-weight:600;padding-bottom:6px}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--rule);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)}
+.note{color:var(--muted);font-size:.88rem;margin:12px 0 0;max-width:80ch}
+.interp{margin:14px 0 0;max-width:80ch}
+.interp p{margin:0 0 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Association explorer</h1>
+    <p>Move the controls to change how strongly and in which direction two continuous variables are related, and where each one is centered and how spread out it is. The regression output updates with every change.</p>
+  </header>
+
+  <div class="layout">
+    <aside class="panel" aria-label="Controls">
+      <div class="group">
+        <h3>Association</h3>
+        <div class="ctl">
+          <label for="r">Strength |r| <input type="number" id="r-n" min="0" max="1" step="0.01" aria-label="Strength value"></label>
+          <input type="range" id="r" min="0" max="1" step="0.01">
+        </div>
+        <div class="seg" role="group" aria-label="Direction">
+          <button type="button" id="pos" aria-pressed="true">Positive</button>
+          <button type="button" id="neg" aria-pressed="false">Negative</button>
+        </div>
+      </div>
+      <div class="group">
+        <h3>Predictor</h3>
+        <div class="ctl">
+          <label for="xname">Label</label>
+          <input type="text" id="xname" class="txt" placeholder="X" maxlength="40" autocomplete="off">
+        </div>
+        <div class="ctl">
+          <label for="mx">Mean <input type="number" id="mx-n" step="1" aria-label="X mean value"></label>
+          <input type="range" id="mx" min="-100" max="200" step="1">
+        </div>
+        <div class="ctl">
+          <label for="sx">Standard deviation <input type="number" id="sx-n" min="0.1" step="0.5" aria-label="X SD value"></label>
+          <input type="range" id="sx" min="0.5" max="50" step="0.5">
+        </div>
+      </div>
+      <div class="group">
+        <h3>Outcome</h3>
+        <div class="ctl">
+          <label for="yname">Label</label>
+          <input type="text" id="yname" class="txt" placeholder="Y" maxlength="40" autocomplete="off">
+        </div>
+        <div class="ctl">
+          <label for="my">Mean <input type="number" id="my-n" step="1" aria-label="Y mean value"></label>
+          <input type="range" id="my" min="-100" max="200" step="1">
+        </div>
+        <div class="ctl">
+          <label for="sy">Standard deviation <input type="number" id="sy-n" min="0.1" step="0.5" aria-label="Y SD value"></label>
+          <input type="range" id="sy" min="0.5" max="50" step="0.5">
+        </div>
+      </div>
+      <div class="group">
+        <h3>Sample</h3>
+        <div class="ctl">
+          <label for="n">Sample size n <input type="number" id="n-n" min="5" max="1000" step="1" aria-label="Sample size value"></label>
+          <input type="range" id="n" min="5" max="1000" step="1">
+        </div>
+        <div class="row">
+          <button type="button" class="btn" id="resample">Draw a new sample</button>
+        </div>
+        <label class="check"><input type="checkbox" id="exact"> Force the sample to hit the targets exactly (turn off to see sampling variability)</label>
+      </div>
+    </aside>
+
+    <main>
+      <div class="plots">
+        <section class="panel plot">
+          <h2><span id="plot-title">Scatterplot of Y on X</span> <small id="raw-sub"></small></h2>
+          <svg id="raw" viewBox="0 0 560 440" role="img" aria-label="Scatterplot of X and Y on original units with the fitted regression line"></svg>
+          <p class="eq" id="raw-eq"></p>
+          <p class="eq" id="std-eq"></p>
+          <button type="button" class="btn see-btn" id="see-btn" aria-pressed="false" aria-controls="see-panel">Standard error of estimate illustration</button>
+          <div class="see" id="see-panel" hidden aria-live="polite"></div>
+        </section>
+      </div>
+      <div class="legend">
+        <span><i class="dot"></i>Observations</span>
+        <span><i class="sw"></i>Least-squares line</span>
+        <span><i class="sw mean"></i><span id="leg-mean">Means of X and Y</span></span>
+        <span class="see-only" hidden><i class="sw err"></i>Errors (residuals), Y − Ŷ</span>
+        <span class="see-only" hidden><i class="bandsw"></i>Ŷ ± 1 standard error of estimate</span>
+      </div>
+
+      <section class="panel results">
+        <h2 id="reg-title">Regression of Y on X</h2>
+        <div class="tables">
+          <div class="tbl-wrap">
+            <table>
+              <caption>Unstandardized coefficients</caption>
+              <thead><tr><th>Term</th><th>b</th><th>SE</th><th>t</th><th>p</th><th>95% CI</th></tr></thead>
+              <tbody id="unstd"></tbody>
+            </table>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <caption>Standardized coefficients</caption>
+              <thead><tr><th>Term</th><th>β</th><th>SE</th><th>t</th><th>p</th><th>95% CI</th></tr></thead>
+              <tbody id="std-t"></tbody>
+            </table>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <caption>Model fit</caption>
+              <tbody id="fit"></tbody>
+            </table>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <caption>Sample descriptives</caption>
+              <thead><tr><th>Variable</th><th>Target M</th><th>Sample M</th><th>Target SD</th><th>Sample SD</th></tr></thead>
+              <tbody id="desc"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="interp" id="interp"></div>
+        <p class="note">b = r × (SD<sub>Y</sub> / SD<sub>X</sub>) and a = M<sub>Y</sub> − b × M<sub>X</sub>. In simple regression the standardized slope β equals r, and its t and p are identical to those of the unstandardized slope; standardizing changes the units, not the evidence. SDs use n − 1.</p>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  const state={r:0.5,dir:1,mx:50,sx:10,my:100,sy:15,n:100,exact:true,seed:20260925,xname:"",yname:"",see:false};
+  const esc=s=>s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  // ---------- random numbers ----------
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function normals(n,rand){const o=[];while(o.length<n){const u=rand()||1e-12,v=rand(),m=Math.sqrt(-2*Math.log(u));o.push(m*Math.cos(2*Math.PI*v));if(o.length<n)o.push(m*Math.sin(2*Math.PI*v));}return o;}
+  const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const sd=(a,m)=>Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0)/(a.length-1));
+
+  function generate(){
+    const n=state.n,rho=state.r*state.dir,rand=mulberry32(state.seed);
+    const all=normals(2*1000,rand);                 // fixed pool so points morph smoothly
+    let z1=all.slice(0,n),z2=all.slice(1000,1000+n);
+    let yz;
+    if(state.exact){
+      const m1=mean(z1),s1=sd(z1,m1);z1=z1.map(v=>(v-m1)/s1);
+      const m2=mean(z2);z2=z2.map(v=>v-m2);
+      const proj=z2.reduce((s,v,i)=>s+v*z1[i],0)/z1.reduce((s,v)=>s+v*v,0);
+      let e=z2.map((v,i)=>v-proj*z1[i]);const se=sd(e,0);e=e.map(v=>v/se);
+      yz=z1.map((v,i)=>rho*v+Math.sqrt(Math.max(0,1-rho*rho))*e[i]);
+    }else{
+      yz=z1.map((v,i)=>rho*v+Math.sqrt(Math.max(0,1-rho*rho))*z2[i]);
+    }
+    return{x:z1.map(v=>state.mx+state.sx*v),y:yz.map(v=>state.my+state.sy*v)};
+  }
+
+  // ---------- t distribution ----------
+  function lgamma(x){const g=7,c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+    if(x<0.5)return Math.log(Math.PI/Math.sin(Math.PI*x))-lgamma(1-x);x-=1;let a=c[0];const t=x+g+0.5;for(let i=1;i<9;i++)a+=c[i]/(x+i);return 0.5*Math.log(2*Math.PI)+(x+0.5)*Math.log(t)-t+Math.log(a);}
+  function betacf(a,b,x){const MAXIT=300,EPS=3e-14,FPMIN=1e-300;let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;if(Math.abs(d)<FPMIN)d=FPMIN;d=1/d;let h=d;
+    for(let m=1;m<=MAXIT;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<FPMIN)d=FPMIN;c=1+aa/c;if(Math.abs(c)<FPMIN)c=FPMIN;d=1/d;h*=d*c;
+      aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<FPMIN)d=FPMIN;c=1+aa/c;if(Math.abs(c)<FPMIN)c=FPMIN;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<EPS)break;}return h;}
+  function ibeta(x,a,b){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+    return x<(a+1)/(a+b+2)?bt*betacf(a,b,x)/a:1-bt*betacf(b,a,1-x)/b;}
+  const pTwo=(t,df)=>!isFinite(t)?0:ibeta(df/(df+t*t),df/2,0.5);
+  function tCrit(df){let lo=0,hi=1000;for(let i=0;i<100;i++){const mid=(lo+hi)/2;pTwo(mid,df)>0.05?lo=mid:hi=mid;}return(lo+hi)/2;}
+  function fP(F,d1,d2){return !isFinite(F)?0:ibeta(d2/(d2+d1*F),d2/2,d1/2);}
+
+  // ---------- regression ----------
+  function regress(x,y){
+    const n=x.length,Mx=mean(x),My=mean(y),Sx=sd(x,Mx),Sy=sd(y,My);
+    let sxx=0,syy=0,sxy=0;for(let i=0;i<n;i++){const dx=x[i]-Mx,dy=y[i]-My;sxx+=dx*dx;syy+=dy*dy;sxy+=dx*dy;}
+    const r=sxy/Math.sqrt(sxx*syy),b=sxy/sxx,a=My-b*Mx,df=n-2;
+    const ssres=Math.max(0,syy-b*sxy),s=Math.sqrt(ssres/df);
+    const seB=s/Math.sqrt(sxx),seA=s*Math.sqrt(1/n+Mx*Mx/sxx);
+    const tB=seB>0?b/seB:(b===0?0:Infinity*Math.sign(b)),tA=seA>0?a/seA:Infinity*Math.sign(a);
+    const tc=tCrit(df),R2=r*r,adj=1-(1-R2)*(n-1)/df,F=tB*tB;
+    const beta=r,seBeta=seB*Sx/Sy;
+    return{n,Mx,My,Sx,Sy,r,b,a,df,s,seB,seA,tB,tA,pB:pTwo(tB,df),pA:pTwo(tA,df),tc,R2,adj,F,pF:fP(F,1,df),beta,seBeta};
+  }
+
+  // ---------- formatting ----------
+  const f=(v,d=3)=>!isFinite(v)?(v>0?"∞":v<0?"−∞":"—"):(Math.abs(v)<0.5*Math.pow(10,-d)?(0).toFixed(d):v.toFixed(d)).replace("-","−");
+  const fp=p=>!isFinite(p)?"—":p<.001?"< .001":p.toFixed(3).replace(/^0/,"");
+  const dig=v=>{const a=Math.abs(v);return a>=100?1:a>=10?2:3;};
+  const ci=(est,se,tc,d)=>`[${f(est-tc*se,d)}, ${f(est+tc*se,d)}]`;
+
+  // ---------- plotting ----------
+  function niceTicks(lo,hi,count){const span=hi-lo,raw=span/count,mag=Math.pow(10,Math.floor(Math.log10(raw))),norm=raw/mag;
+    const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag,start=Math.ceil(lo/step)*step,t=[];for(let v=start;v<=hi+1e-9;v+=step)t.push(+v.toFixed(10));return t;}
+  function draw(svg,x,y,fit,Mx,My,lims,xlab,ylab,see){
+    const W=560,H=440,m={l:56,r:16,t:14,b:46},pw=W-m.l-m.r,ph=H-m.t-m.b;
+    const [x0,x1,y0,y1]=lims,sx=v=>m.l+(v-x0)/(x1-x0)*pw,sy=v=>m.t+ph-(v-y0)/(y1-y0)*ph;
+    let h=`<defs><clipPath id="c-${svg.id}"><rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+    const xt=niceTicks(x0,x1,6),yt=niceTicks(y0,y1,6);
+    xt.forEach(t=>{h+=`<line x1="${sx(t)}" x2="${sx(t)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--grid)"/><text x="${sx(t)}" y="${m.t+ph+18}" text-anchor="middle">${f(t,Math.abs(t)%1?1:0)}</text>`;});
+    yt.forEach(t=>{h+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${sy(t)}" y2="${sy(t)}" stroke="var(--grid)"/><text x="${m.l-8}" y="${sy(t)+4}" text-anchor="end">${f(t,Math.abs(t)%1?1:0)}</text>`;});
+    h+=`<rect x="${m.l}" y="${m.t}" width="${pw}" height="${ph}" fill="none" stroke="var(--rule)"/>`;
+    h+=`<g clip-path="url(#c-${svg.id})">`;
+    h+=`<line x1="${sx(Mx)}" x2="${sx(Mx)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--meanline)" stroke-dasharray="5 4"/>`;
+    h+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${sy(My)}" y2="${sy(My)}" stroke="var(--meanline)" stroke-dasharray="5 4"/>`;
+    const rad=x.length>400?2.6:x.length>150?3.2:4;
+    if(see){
+      const yh=v=>fit.a+fit.b*v;
+      h+=`<polygon points="${sx(x0)},${sy(yh(x0)+see.s)} ${sx(x1)},${sy(yh(x1)+see.s)} ${sx(x1)},${sy(yh(x1)-see.s)} ${sx(x0)},${sy(yh(x0)-see.s)}" fill="var(--band)"/>`;
+      [see.s,-see.s].forEach(o=>{h+=`<line x1="${sx(x0)}" y1="${sy(yh(x0)+o)}" x2="${sx(x1)}" y2="${sy(yh(x1)+o)}" stroke="var(--fit)" stroke-width="1" stroke-dasharray="4 4" opacity=".8"/>`;});
+      for(let i=0;i<x.length;i++)h+=`<line x1="${sx(x[i]).toFixed(1)}" y1="${sy(y[i]).toFixed(1)}" x2="${sx(x[i]).toFixed(1)}" y2="${sy(yh(x[i])).toFixed(1)}" stroke="var(--err)" stroke-width="${x.length>400?1:1.5}" opacity=".85"/>`;
+    }
+    for(let i=0;i<x.length;i++){
+      const tip=see?`<title>${xlab} = ${f(x[i],2)}, ${ylab} = ${f(y[i],2)}\nPredicted = ${f(fit.a+fit.b*x[i],2)}\nError = ${f(y[i]-fit.a-fit.b*x[i],2)}, squared = ${f((y[i]-fit.a-fit.b*x[i])**2,2)}</title>`:"";
+      h+=`<circle cx="${sx(x[i]).toFixed(1)}" cy="${sy(y[i]).toFixed(1)}" r="${rad}" fill="var(--point)" fill-opacity=".55">${tip}</circle>`;
+    }
+    if(see&&see.hi!=null){const i=see.hi;h+=`<circle cx="${sx(x[i])}" cy="${sy(y[i])}" r="${rad+4}" fill="none" stroke="var(--err)" stroke-width="2"/>`;}
+    h+=`<line x1="${sx(x0)}" y1="${sy(fit.a+fit.b*x0)}" x2="${sx(x1)}" y2="${sy(fit.a+fit.b*x1)}" stroke="var(--fit)" stroke-width="2.5"/>`;
+    h+=`</g>`;
+    h+=`<text x="${m.l+pw/2}" y="${H-8}" text-anchor="middle" style="fill:var(--ink);font-size:13px">${xlab}</text>`;
+    h+=`<text transform="translate(14 ${m.t+ph/2}) rotate(-90)" text-anchor="middle" style="fill:var(--ink);font-size:13px">${ylab}</text>`;
+    svg.innerHTML=h;
+  }
+  function limits(v){let lo=Math.min(...v),hi=Math.max(...v);const pad=(hi-lo||1)*0.08;return[lo-pad,hi+pad];}
+
+  function renderSEE(x,y,e,e2,SSE,hi,R,XN,YN){
+    const d=v=>dig(v),sumE=e.reduce((s,v)=>s+v,0),MSE=SSE/R.df,inside=e.filter(v=>Math.abs(v)<=R.s).length;
+    const show=[0,1,2].filter(i=>i<x.length&&i!==hi).slice(0,2).concat([hi]);
+    const rows=show.map(i=>`<tr><td>${i===hi?"Largest error":"Case "+(i+1)}</td><td>${f(x[i],2)}</td><td>${f(y[i],2)}</td><td>${f(R.a+R.b*x[i],2)}</td><td>${f(e[i],2)}</td><td>${f(e2[i],2)}</td></tr>`).join("");
+    $("see-panel").innerHTML=`
+      <h3>How the errors become the standard error of estimate</h3>
+      <ol>
+        <li><strong>Find each error.</strong> For every case, the error (residual) is the vertical distance from the point to the line: <span class="math">e = ${YN} − Ŷ</span>. These are the orange segments. Hover over a point to see its values. A few examples:
+          <div class="tbl-wrap"><table><thead><tr><th></th><th>${XN}</th><th>${YN}</th><th>Ŷ</th><th>e</th><th>e²</th></tr></thead><tbody>${rows}</tbody></table></div>
+          The errors sum to ${f(Math.abs(sumE)<1e-9?0:sumE,2)}, since positive and negative errors always cancel around a least-squares line. That's why they are squared before being combined.</li>
+        <li><strong>Square and add them.</strong> <span class="math">SS<sub>error</sub> = Σe² = ${f(SSE,d(SSE))}</span> across all ${R.n} cases.</li>
+        <li><strong>Divide by the degrees of freedom.</strong> <span class="math">SS<sub>error</sub> / (n − 2) = ${f(SSE,d(SSE))} / ${R.df} = ${f(MSE,d(MSE))}</span>. It's n − 2 rather than n because two quantities, the intercept and slope, were estimated from the same data used to compute the errors.</li>
+        <li><strong>Take the square root.</strong> <span class="math">s<sub>est</sub> = √${f(MSE,d(MSE))} = ${f(R.s,d(R.s))}</span>, back in the units of ${YN}. It's roughly the typical size of an error, the typical distance of a point from the line.</li>
+      </ol>
+      <p class="note">The shaded band spans Ŷ ± ${f(R.s,d(R.s))}. Here ${inside} of ${R.n} points (${(100*inside/R.n).toFixed(0)}%) fall inside it; with roughly normal errors, about 68% would be expected. The same quantity also equals SD<sub>${YN}</sub> × √(1 − r²) × √((n − 1)/(n − 2)) = ${f(R.Sy*Math.sqrt(1-R.r*R.r)*Math.sqrt((R.n-1)/R.df),d(R.s))}, so a stronger association or a smaller SD of ${YN} shrinks it.</p>`;
+  }
+
+  // ---------- render ----------
+  const $=id=>document.getElementById(id);
+  function render(){
+    const {x,y}=generate(),R=regress(x,y);
+    const XN=esc(state.xname.trim()||"X"),YN=esc(state.yname.trim()||"Y"),plain=XN==="X"&&YN==="Y";
+    $("plot-title").innerHTML=`Scatterplot of ${YN} on ${XN}`;
+    $("reg-title").innerHTML=`Regression of ${YN} on ${XN}`;
+    $("leg-mean").innerHTML=`Means of ${XN} and ${YN}`;
+    $("raw").setAttribute("aria-label",`Scatterplot of ${state.xname.trim()||"X"} and ${state.yname.trim()||"Y"} with the fitted regression line`);
+    const e=x.map((v,i)=>y[i]-(R.a+R.b*v)),e2=e.map(v=>v*v),SSE=e2.reduce((s,v)=>s+v,0);
+    let hi=0;e.forEach((v,i)=>{if(Math.abs(v)>Math.abs(e[hi]))hi=i;});
+    draw($("raw"),x,y,{a:R.a,b:R.b},R.Mx,R.My,[...limits(x),...limits(y)],XN,YN,state.see?{s:R.s,hi}:null);
+    document.querySelectorAll(".see-only").forEach(el=>el.hidden=!state.see);
+    if(state.see)renderSEE(x,y,e,e2,SSE,hi,R,XN,YN);
+
+    const db=Math.max(dig(R.b),3),da=dig(R.a);
+    $("raw-sub").textContent=`r = ${f(R.r,2)}`;
+    $("raw-eq").innerHTML=plain?`<i>Ŷ</i> = ${f(R.a,da)} ${R.b<0?"−":"+"} ${f(Math.abs(R.b),db)}<i>X</i>`:`Predicted ${YN} = ${f(R.a,da)} ${R.b<0?"−":"+"} ${f(Math.abs(R.b),db)} × ${XN}`;
+    $("std-eq").innerHTML=`Standardized: <i>ẑ</i><sub>${YN}</sub> = ${f(R.beta,3)}<i>z</i><sub>${XN}</sub>`;
+
+    $("unstd").innerHTML=
+      `<tr><td>Intercept (a)</td><td>${f(R.a,da)}</td><td>${f(R.seA,da)}</td><td>${f(R.tA,2)}</td><td>${fp(R.pA)}</td><td>${ci(R.a,R.seA,R.tc,da)}</td></tr>`+
+      `<tr><td>Slope of ${XN} (b)</td><td>${f(R.b,db)}</td><td>${f(R.seB,db)}</td><td>${f(R.tB,2)}</td><td>${fp(R.pB)}</td><td>${ci(R.b,R.seB,R.tc,db)}</td></tr>`;
+    $("std-t").innerHTML=
+      `<tr><td>Intercept</td><td>${f(0,3)}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`+
+      `<tr><td>Slope of ${XN} (β)</td><td>${f(R.beta,3)}</td><td>${f(R.seBeta,3)}</td><td>${f(R.tB,2)}</td><td>${fp(R.pB)}</td><td>${ci(R.beta,R.seBeta,R.tc,3)}</td></tr>`;
+    $("fit").innerHTML=
+      `<tr><td>Pearson r</td><td>${f(R.r,3)}</td></tr>`+
+      `<tr><td>R²</td><td>${f(R.R2,3)}</td></tr>`+
+      `<tr><td>Adjusted R²</td><td>${f(R.adj,3)}</td></tr>`+
+      `<tr><td>Standard error of estimate</td><td>${f(R.s,dig(R.s))}</td></tr>`+
+      `<tr><td>F(1, ${R.df})</td><td>${f(R.F,2)}, p ${fp(R.pF).startsWith("<")?fp(R.pF):"= "+fp(R.pF)}</td></tr>`+
+      `<tr><td>n</td><td>${R.n}</td></tr>`;
+    $("desc").innerHTML=
+      `<tr><td>${XN}</td><td>${f(state.mx,2)}</td><td>${f(R.Mx,2)}</td><td>${f(state.sx,2)}</td><td>${f(R.Sx,2)}</td></tr>`+
+      `<tr><td>${YN}</td><td>${f(state.my,2)}</td><td>${f(R.My,2)}</td><td>${f(state.sy,2)}</td><td>${f(R.Sy,2)}</td></tr>`;
+
+    const dirWord=R.b>=0?"increase":"decrease";
+    $("interp").innerHTML=
+      `<p>Each 1-unit increase in ${XN} goes with a predicted ${dirWord} of ${f(Math.abs(R.b),db)} units in ${YN}.</p>`+
+      `<p>Each 1-SD increase in ${XN} goes with a predicted ${dirWord} of ${f(Math.abs(R.beta),3)} SD in ${YN}, and ${XN} accounts for ${(R.R2*100).toFixed(1)}% of the variance in ${YN}.</p>`;
+  }
+
+  // ---------- controls ----------
+  function bind(key,parse=parseFloat){
+    const s=$(key),n=$(key+"-n");s.value=state[key];n.value=state[key];
+    s.addEventListener("input",()=>{state[key]=parse(s.value);n.value=s.value;render();});
+    n.addEventListener("change",()=>{let v=parse(n.value);if(!isFinite(v))v=state[key];
+      if(n.min!=="")v=Math.max(+n.min,v);if(n.max!=="")v=Math.min(+n.max,v);
+      state[key]=v;n.value=v;s.value=v;render();});
+  }
+  bind("r");bind("mx");bind("sx");bind("my");bind("sy");bind("n",v=>Math.round(+v));
+  function setDir(d){state.dir=d;$("pos").setAttribute("aria-pressed",d>0);$("neg").setAttribute("aria-pressed",d<0);render();}
+  $("pos").addEventListener("click",()=>setDir(1));
+  $("neg").addEventListener("click",()=>setDir(-1));
+  $("see-btn").addEventListener("click",()=>{state.see=!state.see;$("see-btn").setAttribute("aria-pressed",state.see);$("see-panel").hidden=!state.see;render();});
+  $("resample").addEventListener("click",()=>{state.seed=Math.floor(Math.random()*1e9);render();});
+  ["xname","yname"].forEach(k=>$(k).addEventListener("input",e=>{state[k]=e.target.value;render();}));
+  $("exact").checked=state.exact;
+  $("exact").addEventListener("change",e=>{state.exact=e.target.checked;render();});
+  render();
+})();
+</script>
+</body>
+</html>
