@@ -223,7 +223,7 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
           </div>
         </div>
         <div class="interp" id="interp"></div>
-        <p class="note">b = r × (SD<sub>Y</sub> / SD<sub>X</sub>) and a = M<sub>Y</sub> − b × M<sub>X</sub>. In simple regression the standardized slope β equals r, and its t and p are identical to those of the unstandardized slope; standardizing changes the units, not the evidence. SDs use n − 1.</p>
+        <p class="note">b = r × (SD<sub>Y</sub> / SD<sub>X</sub>) and a = M<sub>Y</sub> − b × M<sub>X</sub>. In simple regression the standardized weight β equals r, and its t and p are identical to those of the unstandardized weight; standardizing changes the units, not the evidence. SDs use n − 1.</p>
       </section>
     </main>
   </div>
@@ -352,7 +352,7 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
           <div class="tbl-wrap"><table><thead><tr><th></th><th>${XN}</th><th>${YN}</th><th>Ŷ</th><th>e</th><th>e²</th></tr></thead><tbody>${rows}</tbody></table></div>
           The errors sum to ${f(Math.abs(sumE)<1e-9?0:sumE,2)}, since positive and negative errors always cancel around a least-squares line. That's why they are squared before being combined.</li>
         <li><strong>Square and add them.</strong> <span class="math">SS<sub>error</sub> = Σe² = ${f(SSE,d(SSE))}</span> across all ${R.n} cases.</li>
-        <li><strong>Divide by the degrees of freedom.</strong> <span class="math">SS<sub>error</sub> / (n − 2) = ${f(SSE,d(SSE))} / ${R.df} = ${f(MSE,d(MSE))}</span>. It's n − 2 rather than n because two quantities, the intercept and slope, were estimated from the same data used to compute the errors.</li>
+        <li><strong>Divide by the degrees of freedom.</strong> <span class="math">SS<sub>error</sub> / (n − 2) = ${f(SSE,d(SSE))} / ${R.df} = ${f(MSE,d(MSE))}</span>. It's n − 2 rather than n because two quantities, the intercept and regression weight, were estimated from the same data used to compute the errors.</li>
         <li><strong>Take the square root.</strong> <span class="math">s<sub>est</sub> = √${f(MSE,d(MSE))} = ${f(R.s,d(R.s))}</span>, back in the units of ${YN}. It's roughly the typical size of an error, the typical distance of a point from the line.</li>
       </ol>
       <p class="note">The shaded band spans Ŷ ± ${f(R.s,d(R.s))}. Here ${inside} of ${R.n} points (${(100*inside/R.n).toFixed(0)}%) fall inside it; with roughly normal errors, about 68% would be expected. The same quantity also equals SD<sub>${YN}</sub> × √(1 − r²) × √((n − 1)/(n − 2)) = ${f(R.Sy*Math.sqrt(1-R.r*R.r)*Math.sqrt((R.n-1)/R.df),d(R.s))}, so a stronger association or a smaller SD of ${YN} shrinks it.</p>`;
@@ -381,10 +381,10 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
 
     $("unstd").innerHTML=
       `<tr><td>Intercept (a)</td><td>${f(R.a,da)}</td><td>${f(R.seA,da)}</td><td>${f(R.tA,2)}</td><td>${fp(R.pA)}</td><td>${ci(R.a,R.seA,R.tc,da)}</td></tr>`+
-      `<tr><td>Slope of ${XN} (b)</td><td>${f(R.b,db)}</td><td>${f(R.seB,db)}</td><td>${f(R.tB,2)}</td><td>${fp(R.pB)}</td><td>${ci(R.b,R.seB,R.tc,db)}</td></tr>`;
+      `<tr><td>Weight for ${XN} (b)</td><td>${f(R.b,db)}</td><td>${f(R.seB,db)}</td><td>${f(R.tB,2)}</td><td>${fp(R.pB)}</td><td>${ci(R.b,R.seB,R.tc,db)}</td></tr>`;
     $("std-t").innerHTML=
       `<tr><td>Intercept</td><td>${f(0,3)}</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>`+
-      `<tr><td>Slope of ${XN} (β)</td><td>${f(R.beta,3)}</td><td>${f(R.seBeta,3)}</td><td>${f(R.tB,2)}</td><td>${fp(R.pB)}</td><td>${ci(R.beta,R.seBeta,R.tc,3)}</td></tr>`;
+      `<tr><td>Weight for ${XN} (β)</td><td>${f(R.beta,3)}</td><td>${f(R.seBeta,3)}</td><td>${f(R.tB,2)}</td><td>${fp(R.pB)}</td><td>${ci(R.beta,R.seBeta,R.tc,3)}</td></tr>`;
     $("fit").innerHTML=
       `<tr><td>Pearson r</td><td>${f(R.r,3)}</td></tr>`+
       `<tr><td>R²</td><td>${f(R.R2,3)}</td></tr>`+
