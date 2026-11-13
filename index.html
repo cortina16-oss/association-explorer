@@ -88,6 +88,8 @@ svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--muted);font-s
 .sw.mean{border-top:1.5px dashed var(--meanline)}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--point);opacity:.7}
 .results{margin-top:20px}
+.explain{margin:20px 0 0;max-width:80ch}
+.explain p{margin:0 0 10px}
 .tables{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 @media (max-width:1060px){.tables{grid-template-columns:1fr}}
 .tbl-wrap{overflow-x:auto}
@@ -182,6 +184,8 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
         <span class="see-only" hidden><i class="sw err"></i>Errors (residuals), Y − Ŷ</span>
         <span class="see-only" hidden><i class="bandsw"></i>Ŷ ± 1 standard error of estimate</span>
       </div>
+
+      <div class="explain" id="explain" aria-live="polite"></div>
 
       <section class="panel results">
         <h2 id="reg-title">Regression of Y on X</h2>
@@ -376,6 +380,9 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
       `<tr><td>${YN}</td><td>${f(state.my,2)}</td><td>${f(R.My,2)}</td><td>${f(state.sy,2)}</td><td>${f(R.Sy,2)}</td></tr>`;
 
     const dirWord=R.b>=0?"increase":"decrease";
+    $("explain").innerHTML=
+      `<p>The regression equation is the equation for the line of best fit: the straight line that fits the data better than any other.</p>`+
+      `<p>The regression weight is the rate of change in ${YN} per single-point increase in ${XN}. So, for every unit increase in ${XN}, ${YN} is expected to ${dirWord} by ${f(Math.abs(R.b),db)}. The other value in the equation, ${f(R.a,da)}, is the point on the ${YN} axis where the line of best fit crosses. Its only purpose is to cause the scale of weighted ${XN} to match that of ${YN}, so that when one plugs a value of ${XN} into the equation, the result is in the scale of ${YN}.</p>`;
     $("interp").innerHTML=
       `<p>Each 1-unit increase in ${XN} goes with a predicted ${dirWord} of ${f(Math.abs(R.b),db)} units in ${YN}.</p>`+
       `<p>Each 1-SD increase in ${XN} goes with a predicted ${dirWord} of ${f(Math.abs(R.beta),3)} SD in ${YN}, and ${XN} accounts for ${(R.R2*100).toFixed(1)}% of the variance in ${YN}.</p>`;
