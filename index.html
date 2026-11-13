@@ -75,6 +75,7 @@ svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--muted);font-s
 .see{margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
 .see[hidden]{display:none}
 .see h3{font-size:1rem;margin:0 0 6px}
+.see>p{margin:0 0 12px;max-width:80ch}
 .see ol{margin:8px 0 0;padding-left:1.3em}
 .see li{margin:0 0 10px}
 .see .math{font-family:"Newsreader",Georgia,serif;font-size:1.08em}
@@ -344,6 +345,7 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
     const show=[0,1,2].filter(i=>i<x.length&&i!==hi).slice(0,2).concat([hi]);
     const rows=show.map(i=>`<tr><td>${i===hi?"Largest error":"Case "+(i+1)}</td><td>${f(x[i],2)}</td><td>${f(y[i],2)}</td><td>${f(R.a+R.b*x[i],2)}</td><td>${f(e[i],2)}</td><td>${f(e2[i],2)}</td></tr>`).join("");
     $("see-panel").innerHTML=`
+      <p>The standard error of estimate is the standard deviation of the errors in predicting ${YN} from ${XN}. If prediction were perfect, then every error would be 0 and <i>s</i><sub>est</sub> would be 0. If there were no prediction (<i>r</i> = 0), then <i>s</i><sub>est</sub> would equal the standard deviation of ${YN}.</p>
       <h3>How the errors become the standard error of estimate</h3>
       <ol>
         <li><strong>Find each error.</strong> For every case, the error (residual) is the vertical distance from the point to the line: <span class="math">e = ${YN} − Ŷ</span>. These are the orange segments. Hover over a point to see its values. A few examples:
