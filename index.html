@@ -67,6 +67,10 @@ input[type=range]{width:100%;accent-color:var(--accent);margin:0}
 .plot h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .plot h2 small{font-family:"Public Sans",system-ui,sans-serif;font-weight:500;font-size:.85rem;color:var(--muted)}
 .eq{font-size:.95rem;margin:8px 0 0;color:var(--ink)}
+.hat{position:relative;display:inline-block;line-height:1}
+.hat::after{content:"^";position:absolute;left:50%;transform:translateX(-50%);line-height:1;font-style:normal;font-weight:400;font-size:.75em;pointer-events:none}
+i.hat::after{left:62%}
+i.hat.lc::after{top:-.28em}
 .eq i{font-family:"Newsreader",Georgia,serif;font-size:1.08em}
 svg{display:block;width:100%;height:auto}
 svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--muted);font-size:12px}
@@ -85,6 +89,7 @@ svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--muted);font-s
 .bandsw{width:18px;height:10px;background:var(--band);border-top:1px dashed var(--fit);border-bottom:1px dashed var(--fit)}
 .legend .see-only[hidden]{display:none}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);margin-top:6px}
+.legend [hidden]{display:none}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw{width:18px;height:0;border-top:2.5px solid var(--fit)}
 .sw.mean{border-top:1.5px dashed var(--meanline)}
@@ -166,6 +171,10 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
         </div>
         <label class="check"><input type="checkbox" id="exact"> Force the sample to hit the targets exactly (turn off to see sampling variability)</label>
       </div>
+      <div class="group">
+        <h3>Display</h3>
+        <label class="check"><input type="checkbox" id="line" checked> Show the line of best fit</label>
+      </div>
     </aside>
 
     <main>
@@ -182,8 +191,8 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
       </div>
       <div class="legend">
         <span><i class="dot"></i>Observations</span>
-        <span><i class="sw"></i>Least-squares line</span>
-        <span><i class="sw slope"></i>Slope: change in Y over a fixed change in X</span>
+        <span id="lg-line"><i class="sw"></i>Least-squares line</span>
+        <span id="lg-slope"><i class="sw slope"></i>Slope: change in Y over a fixed change in X</span>
         <span><i class="sw mean"></i><span id="leg-mean">Means of X and Y</span></span>
         <span class="see-only" hidden><i class="sw err"></i>Errors (residuals), Y − Ŷ</span>
         <span class="see-only" hidden><i class="bandsw"></i>Ŷ ± 1 standard error of estimate</span>
@@ -231,7 +240,7 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
 
 <script>
 (function(){
-  const state={r:0.5,dir:1,mx:50,sx:10,my:100,sy:15,n:100,exact:false,seed:20263261,xname:"",yname:"",see:false};
+  const state={r:0.5,dir:1,mx:50,sx:10,my:100,sy:15,n:100,exact:false,seed:20263261,xname:"",yname:"",see:false,line:true};
   const esc=s=>s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
   // ---------- random numbers ----------
@@ -315,11 +324,13 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
     }
     if(x0<0&&x1>0)h+=`<line x1="${sx(0)}" x2="${sx(0)}" y1="${m.t}" y2="${m.t+ph}" stroke="var(--muted)" stroke-width="1"/>`;
     if(y0<0&&y1>0)h+=`<line x1="${m.l}" x2="${m.l+pw}" y1="${sy(0)}" y2="${sy(0)}" stroke="var(--muted)" stroke-width="1"/>`;
-    {const ix=sx(0),iy=sy(fit.a),right=ix<m.l+pw-120;
+    if(state.line){const ix=sx(0),iy=sy(fit.a),right=ix<m.l+pw-120;
      h+=`<circle cx="${ix}" cy="${iy}" r="5" fill="var(--panel)" stroke="var(--fit)" stroke-width="2"/>`;
      h+=`<text x="${ix+(right?9:-9)}" y="${iy+(fit.b>=0?-9:16)}" text-anchor="${right?"start":"end"}" style="fill:var(--fit);font-weight:600;paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round">a = ${f(fit.a,dig(fit.a))}</text>`;}
     if(see&&see.hi!=null){const i=see.hi;h+=`<circle cx="${sx(x[i])}" cy="${sy(y[i])}" r="${rad+4}" fill="none" stroke="var(--err)" stroke-width="2"/>`;}
-    h+=`<line x1="${sx(x0)}" y1="${sy(fit.a+fit.b*x0)}" x2="${sx(x1)}" y2="${sy(fit.a+fit.b*x1)}" stroke="var(--fit)" stroke-width="2.5"/>`;
+    // the line also stays visible while the standard error of estimate illustration is open, since its errors are measured from it
+    if(state.line||see)h+=`<line x1="${sx(x0)}" y1="${sy(fit.a+fit.b*x0)}" x2="${sx(x1)}" y2="${sy(fit.a+fit.b*x1)}" stroke="var(--fit)" stroke-width="2.5"/>`;
+    if(state.line){
     // slope triangle: run of fit.run in X, rise of b*run in Y
     const xa=fit.xs,xb=fit.xs+fit.run,ya=fit.a+fit.b*xa,yb=fit.a+fit.b*xb;
     const Ax=sx(xa),Ay=sy(ya),Cx=sx(xb),Cy=sy(ya),By=sy(yb),up=By<Cy;
@@ -331,6 +342,7 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
     h+=`<text x="${(Ax+Cx)/2}" y="${up?Cy+17:Cy-8}" text-anchor="middle" style="${halo}">${sgn(1)}${f(fit.run,fit.run%1?1:0)} in ${xlab}</text>`;
     h+=`<text x="${Cx+8}" y="${(Cy+By)/2+4}" text-anchor="start" style="${halo}">${sgn(rise)}${f(Math.abs(rise),Math.abs(rise)>=100?1:2)} in ${ylab}</text>`;
     h+=`<text x="${Cx+8}" y="${(Cy+By)/2+19}" text-anchor="start" style="${halo};font-weight:500;font-size:11px">(${f(fit.run,fit.run%1?1:0)} × ${f(fit.b,Math.max(dig(fit.b),3))})</text>`;
+    }else h+=`</g>`;
     h+=`<text x="${m.l+pw/2}" y="${H-8}" text-anchor="middle" style="fill:var(--ink);font-size:13px">${xlab}</text>`;
     h+=`<text transform="translate(14 ${m.t+ph/2}) rotate(-90)" text-anchor="middle" style="fill:var(--ink);font-size:13px">${ylab}</text>`;
     svg.innerHTML=h;
@@ -371,13 +383,14 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
     let hi=0;e.forEach((v,i)=>{if(Math.abs(v)>Math.abs(e[hi]))hi=i;});
     draw($("raw"),x,y,{a:R.a,b:R.b,run:niceRun(R.Sx),xs:R.Mx+0.4*niceRun(R.Sx)},R.Mx,R.My,[...xLimits(x),...yLimits(y,R.a)],XN,YN,state.see?{s:R.s,hi}:null);
     document.querySelectorAll(".see-only").forEach(el=>el.hidden=!state.see);
+    $("lg-line").hidden=!(state.line||state.see);$("lg-slope").hidden=!state.line;
     if(state.see)renderSEE(x,y,e,e2,SSE,hi,R,XN,YN);
 
     const db=Math.max(dig(R.b),3),da=dig(R.a);
     $("raw-sub").textContent=`r = ${f(R.r,2)}`;
     $("raw-eq").innerHTML=plain?`<i>Ŷ</i> = ${f(R.a,da)} ${R.b<0?"−":"+"} ${f(Math.abs(R.b),db)}<i>X</i>`:`Predicted ${YN} = ${f(R.a,da)} ${R.b<0?"−":"+"} ${f(Math.abs(R.b),db)} × ${XN}`;
     $("see-eq").innerHTML=`Standard error of estimate: <i>s</i><sub>est</sub> = ${f(R.s,dig(R.s))}`;
-    $("std-eq").innerHTML=`Standardized: <i>ẑ</i><sub>${YN}</sub> = ${f(R.beta,3)}<i>z</i><sub>${XN}</sub>`;
+    $("std-eq").innerHTML=`Standardized: <i class="hat lc">z</i><sub>${YN}</sub> = ${f(R.beta,3)}<i>z</i><sub>${XN}</sub>`;
 
     $("unstd").innerHTML=
       `<tr><td>Intercept (a)</td><td>${f(R.a,da)}</td><td>${f(R.seA,da)}</td><td>${f(R.tA,2)}</td><td>${fp(R.pA)}</td><td>${ci(R.a,R.seA,R.tc,da)}</td></tr>`+
@@ -423,6 +436,7 @@ thead th{color:var(--muted);font-weight:500;border-bottom:1.5px solid var(--ink)
   ["xname","yname"].forEach(k=>$(k).addEventListener("input",e=>{state[k]=e.target.value;render();}));
   $("exact").checked=state.exact;
   $("exact").addEventListener("change",e=>{state.exact=e.target.checked;render();});
+  $("line").checked=state.line;$("line").addEventListener("change",e=>{state.line=e.target.checked;render();});
   render();
 })();
 </script>
